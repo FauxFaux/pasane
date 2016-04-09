@@ -37,10 +37,23 @@ void sink_list(pa_context *context, const pa_sink_info *info, int eol, void *use
     }
 
     assert(info);
-    printf("sink #%u <%s> (%d channels) %s:\n",
+    char full_name[2048];
+    snprintf(full_name, sizeof(full_name), "%02u. <%s> %s (%d channels)",
            info->index, info->name,
-           info->channel_map.channels,
-           info->description ? info->description : "(null)");
+           info->description ? info->description : "(no description)",
+           info->channel_map.channels);
+
+    int match_failed = regexec(&sink_regex, full_name, 0, NULL, 0);
+    if (match_failed) {
+        // not some other error
+        assert(REG_NOMATCH == match_failed);
+    }
+
+    if (match_failed) {
+        return;
+    }
+
+    printf("%s:\n", full_name);
 
     for (int i = 0; i < info->volume.channels; ++i) {
         char vol_val[PA_VOLUME_SNPRINT_MAX];
