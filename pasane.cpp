@@ -1,10 +1,19 @@
 #include <stdio.h>
+#include <string.h>
+
+#include <getopt.h>
 
 #include <pulse/pulseaudio.h>
+#include <regex.h>
 
-pa_mainloop *mainloop;
-pa_mainloop_api *api;
-pa_context *context;
+pa_mainloop *mainloop = NULL;
+pa_mainloop_api *api = NULL;
+pa_context *context = NULL;
+regex_t sink_regex = {};
+
+static const char *show_null(const char *val) {
+    return val ? val : "(null)";
+}
 
 void volume_cb(pa_context *context, int success, void *userdata) {
     assert(context);
@@ -42,7 +51,6 @@ void sink_list(pa_context *context, const pa_sink_info *info, int eol, void *use
                pa_sw_volume_to_linear(info->volume.values[i]),
                info->volume.values[i] / (double) PA_VOLUME_NORM
         );
-
     }
 
     pa_cvolume v;
@@ -80,30 +88,77 @@ static void context_state_callback(pa_context *context, void *userdata) {
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
+    int ret = 1;
+
+    char *sink_search = strdup(".");
+    char *balance_spec = NULL;
+    char *client_name = NULL;
+
+    while (true) {
+        static struct option long_options[] = {
+                {"sink",    required_argument, 0,  0 },
+                {"balance", required_argument, 0,  0 },
+                {0,         0,                 0,  0 }
+        };
+        int option_index = 0;
+        int c = getopt_long(argc, argv, "s:b:", long_options, &option_index);
+
+        if (-1 == c) {
+            break;
+        }
+
+        switch (c) {
+            case 0:
+                free(sink_search);
+                sink_search = strdup(optarg);
+                break;
+            case 1:
+                free(balance_spec);
+                balance_spec = strdup(optarg);
+                break;
+
+            case '?':
+                fprintf(stderr, "Usage: %s [--sink regex-for-sink] [--balance balance-specification] command\n", argv[0]);
+                goto done;
+
+            default:
+                fprintf(stderr, "unrecognised getopt return value: %d\n", c);
+                goto done;
+        }
+    }
+
+    if (const int regex_status = regcomp(&sink_regex, sink_search, REG_EXTENDED | REG_ICASE)) {
+        size_t required_size = regerror(regex_status, &sink_regex, NULL, 0);
+        char *buf = (char *) malloc(required_size);
+        assert(buf);
+
+        regerror(regex_status, &sink_regex, buf, required_size);
+        fprintf(stderr, "sink regex problem: %s\n", buf);
+        free(buf);
+        goto done;
+    }
+
     mainloop = pa_mainloop_new();
     if (!mainloop) {
         perror("couldn't get mainloop");
-        return 1;
+        goto done;
     }
     api = pa_mainloop_get_api(mainloop);
     if (!api) {
         perror("couldn't get api");
-        pa_mainloop_free(mainloop);
-        return 2;
+        goto done;
     }
 
-    char *client_name = pa_xstrdup("pasane");
+    client_name = pa_xstrdup("pasane");
     assert(client_name);
 
     context = pa_context_new(api, client_name);
     if (!context) {
         perror("couldn't get context");
-        pa_mainloop_free(mainloop);
-        return 3;
+        goto done;
     }
 
-    int ret = 1;
     pa_context_set_state_callback(context, context_state_callback, mainloop);
 
     if (pa_context_connect(context, NULL, PA_CONTEXT_NOFLAGS, NULL) < 0) {
@@ -120,5 +175,10 @@ int main() {
     pa_context_unref(context);
     pa_signal_done();
     pa_mainloop_free(mainloop);
+
+    free(client_name);
+    free(sink_search);
+    free(balance_spec);
+    regfree(&sink_regex);
     return ret;
 }
