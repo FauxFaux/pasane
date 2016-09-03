@@ -185,9 +185,13 @@ int main(int argc, char *argv[]) {
     }
 
     done:
-    pa_context_unref(context);
+    if (context) {
+        pa_context_unref(context);
+    }
     pa_signal_done();
-    pa_mainloop_free(mainloop);
+    if (mainloop) {
+        pa_mainloop_free(mainloop);
+    }
 
     free(client_name);
     free(sink_search);
