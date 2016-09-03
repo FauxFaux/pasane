@@ -11,6 +11,8 @@ pa_mainloop_api *api = NULL;
 pa_context *context = NULL;
 regex_t sink_regex = {};
 
+uint16_t pending_operations = 0;
+
 static const char *show_null(const char *val) {
     return val ? val : "(null)";
 }
@@ -22,7 +24,7 @@ void volume_cb(pa_context *context, int success, void *userdata) {
     } else {
         printf("Volume not set\n");
     }
-    pa_context_disconnect(context);
+    --pending_operations;
 }
 
 void sink_list(pa_context *context, const pa_sink_info *info, int eol, void *userdata) {
@@ -33,6 +35,7 @@ void sink_list(pa_context *context, const pa_sink_info *info, int eol, void *use
     }
 
     if (eol) {
+        --pending_operations;
         return;
     }
 
@@ -74,6 +77,7 @@ void sink_list(pa_context *context, const pa_sink_info *info, int eol, void *use
     }
 
     pa_context_set_sink_volume_by_index(context, info->index, &v, volume_cb, NULL);
+    ++pending_operations;
 }
 
 static void context_state_callback(pa_context *context, void *userdata) {
@@ -179,10 +183,17 @@ int main(int argc, char *argv[]) {
         goto done;
     }
 
-    if (pa_mainloop_run(mainloop, &ret) < 0) {
-        fprintf(stderr, "pa_mainloop_run() failed.\n");
-        goto done;
+    ++pending_operations;
+
+    while (pending_operations != 0) {
+        const int iterate_result = pa_mainloop_iterate(mainloop, true, &ret);
+        if (iterate_result <= 0 && ret) {
+            fprintf(stderr, "pa_mainloop_iterate() failed: %d; ret: %d.\n", iterate_result, ret);
+            goto done;
+        }
     }
+
+    pa_context_disconnect(context);
 
     done:
     if (context) {
