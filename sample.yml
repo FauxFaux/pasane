@@ -1,0 +1,6 @@
+balance_profiles:
+  - flat:
+    - 100% .*
+  - boost_centre:
+    - 100% .*
+    - 120% Center

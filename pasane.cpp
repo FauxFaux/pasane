@@ -6,6 +6,8 @@
 #include <pulse/pulseaudio.h>
 #include <regex.h>
 
+#include "parse.h"
+
 pa_mainloop *mainloop = NULL;
 pa_mainloop_api *api = NULL;
 pa_context *context = NULL;
@@ -144,6 +146,8 @@ int main(int argc, char *argv[]) {
                 goto done;
         }
     }
+
+    parse();
 
     if (const int regex_status = regcomp(&sink_regex, sink_search, REG_EXTENDED | REG_ICASE)) {
         size_t required_size = regerror(regex_status, &sink_regex, NULL, 0);
