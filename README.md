@@ -43,3 +43,21 @@ The tool doesn't let you set values to weird values (it'll print warnings while
 clipping things) to prevent PulseAudio from spazzing out.
 
 (I am not very happy.)
+
+Dependencies:
+---
+
+ * `cmake`: `apt install cmake`
+ * `libyaml-cpp`: `apt intall libyaml-cpp-dev` / https://github.com/jbeder/yaml-cpp
+
+Building:
+---
+
+```
+mkdir build
+cd build
+cmake ..
+make
+cp pasane ~/bin
+cp sample.yml ~/.config/pasane.yml
+```
