@@ -13,5 +13,3 @@ target_link_libraries(pasane
         pulse
         lib${YAML_CPP_LIBRARIES}.a
         )
-
-set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
