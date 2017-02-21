@@ -45,9 +45,9 @@ void sink_list(pa_context *context, const pa_sink_info *info, int eol, void *use
     assert(info);
     char full_name[2048];
     snprintf(full_name, sizeof(full_name), "%02u. <%s> %s (%d channels)",
-           info->index, info->name,
-           info->description ? info->description : "(no description)",
-           info->channel_map.channels);
+             info->index, info->name,
+             info->description ? info->description : "(no description)",
+             info->channel_map.channels);
 
     int match_failed = regexec(&sink_regex, full_name, 0, NULL, 0);
     if (match_failed) {
@@ -113,14 +113,16 @@ int main(int argc, char *argv[]) {
 
     char *sink_search = strdup(".");
     char *balance_file_path = NULL;
-    char *balance_spec = NULL;
+    char *balance_spec_name = NULL;
     char *client_name = NULL;
+
+    mapping_t balance_spec = {(ChannelMapping) {1, ".*"}};
 
     while (true) {
         static struct option long_options[] = {
-                {"sink",    required_argument, 0,  0 },
-                {"balance", required_argument, 0,  0 },
-                {0,         0,                 0,  0 }
+                {"sink",    required_argument, 0, 0},
+                {"balance", required_argument, 0, 0},
+                {0, 0,                         0, 0}
         };
         int option_index = 0;
         int c = getopt_long(argc, argv, "s:b:", long_options, &option_index);
@@ -135,12 +137,13 @@ int main(int argc, char *argv[]) {
                 sink_search = strdup(optarg);
                 break;
             case 1:
-                free(balance_spec);
-                balance_spec = strdup(optarg);
+                free(balance_spec_name);
+                balance_spec_name = strdup(optarg);
                 break;
 
             case '?':
-                fprintf(stderr, "Usage: %s [--sink regex-for-sink] [--balance balance-specification] command\n", argv[0]);
+                fprintf(stderr, "Usage: %s [--sink regex-for-sink] [--balance balance-specification] command\n",
+                        argv[0]);
                 goto done;
 
             default:
@@ -171,7 +174,15 @@ int main(int argc, char *argv[]) {
         assert(balance_file_path);
     }
 
-    parse(balance_file_path);
+    if (balance_spec_name) {
+        const mappings_t map = parse(balance_file_path);
+        mappings_t::const_iterator found = map.find(balance_spec_name);
+        if (map.end() == found) {
+            fprintf(stderr, "mapping '%s' not found in spec '%s'\n", balance_spec_name, balance_file_path);
+            goto done;
+        }
+        balance_spec = found->second;
+    }
 
     if (const int regex_status = regcomp(&sink_regex, sink_search, REG_EXTENDED | REG_ICASE)) {
         size_t required_size = regerror(regex_status, &sink_regex, NULL, 0);
@@ -234,7 +245,7 @@ int main(int argc, char *argv[]) {
 
     free(client_name);
     free(sink_search);
-    free(balance_spec);
+    free(balance_spec_name);
     free(balance_file_path);
     regfree(&sink_regex);
     return ret;

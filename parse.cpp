@@ -28,7 +28,7 @@ mappings_t parse(const char *path) {
         throw std::range_error("balance_profiles must be a list");
     }
 
-    std::map<std::string, std::vector<ChannelMapping>> ret;
+    mappings_t ret;
 
     for (size_t i = 0; i < profiles.size(); ++i) {
         const YAML::Node &profile = profiles[i];

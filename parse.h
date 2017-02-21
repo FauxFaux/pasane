@@ -10,7 +10,8 @@ struct ChannelMapping {
     std::string name;
 };
 
-typedef std::map<std::string, std::vector<ChannelMapping>> mappings_t;
+typedef std::vector<ChannelMapping> mapping_t;
+typedef std::map<std::string, mapping_t> mappings_t;
 
 mappings_t parse(const char *path);
 
