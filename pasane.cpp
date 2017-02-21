@@ -5,6 +5,7 @@
 
 #include <pulse/pulseaudio.h>
 #include <regex.h>
+#include <wordexp.h>
 
 #include "parse.h"
 
@@ -111,6 +112,7 @@ int main(int argc, char *argv[]) {
     int ret = 1;
 
     char *sink_search = strdup(".");
+    char *balance_file_path = NULL;
     char *balance_spec = NULL;
     char *client_name = NULL;
 
@@ -147,7 +149,29 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    parse();
+    {
+        wordexp_t exp_result;
+        const char *balance_file_path_raw = "~/.config/pasane.yml";
+        const char *env_file = getenv("PASANE_CONFIG_FILE");
+        if (env_file) {
+            balance_file_path_raw = env_file;
+        }
+        int failure = wordexp(balance_file_path_raw, &exp_result, 0);
+        if (failure) {
+            fprintf(stderr, "invalid path: '%s': man:wordexp(3): %d\n", balance_file_path_raw, failure);
+            goto done;
+        }
+        if (1 != exp_result.we_wordc) {
+            fprintf(stderr, "path matched multiple files or something: '%s' (%lu)\n",
+                    balance_file_path_raw, exp_result.we_wordc);
+            goto done;
+        }
+
+        balance_file_path = strdup(exp_result.we_wordv[0]);
+        assert(balance_file_path);
+    }
+
+    parse(balance_file_path);
 
     if (const int regex_status = regcomp(&sink_regex, sink_search, REG_EXTENDED | REG_ICASE)) {
         size_t required_size = regerror(regex_status, &sink_regex, NULL, 0);
@@ -211,6 +235,7 @@ int main(int argc, char *argv[]) {
     free(client_name);
     free(sink_search);
     free(balance_spec);
+    free(balance_file_path);
     regfree(&sink_regex);
     return ret;
 }

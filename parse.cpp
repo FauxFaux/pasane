@@ -18,8 +18,8 @@ static std::string trim(std::string s) {
     return ltrim(rtrim(s));
 }
 
-mappings_t parse() {
-    const YAML::Node &config = YAML::LoadFile("sample.yml");
+mappings_t parse(const char *path) {
+    const YAML::Node &config = YAML::LoadFile(path);
     if (!config.IsMap()) {
         throw std::range_error("the root must be a map");
     }

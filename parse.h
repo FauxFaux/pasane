@@ -12,7 +12,7 @@ struct ChannelMapping {
 
 typedef std::map<std::string, std::vector<ChannelMapping>> mappings_t;
 
-mappings_t parse();
+mappings_t parse(const char *path);
 
 
 #endif //PASANE_PARSE_H
