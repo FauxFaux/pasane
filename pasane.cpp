@@ -143,6 +143,11 @@ void sink_list(pa_context *context, const pa_sink_info *info, int eol, void *use
     target_mean /= enabled_channels;
     target_mean += adjustment;
 
+    if (target_mean < 0) {
+        fprintf(stderr, "warning: we decided to go negative (%0.2f); muting instead\n", target_mean);
+        target_mean = 0;
+    }
+
     pa_cvolume v = {};
     pa_cvolume_init(&v);
     v.channels = info->volume.channels;
