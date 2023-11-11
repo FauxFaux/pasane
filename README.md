@@ -49,6 +49,7 @@ Dependencies:
 
  * `cmake`: `apt install cmake`
  * `libyaml-cpp`: `apt intall libyaml-cpp-dev` / https://github.com/jbeder/yaml-cpp
+ * `libpulse-dev`: `apt install libpulse-dev`
 
 Building:
 ---
