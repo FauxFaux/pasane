@@ -2,59 +2,58 @@
 #include <iostream>
 #include <string>
 
-#include <yaml-cpp/yaml.h>
 #include "parse.h"
+#include <yaml-cpp/yaml.h>
 
 static std::string ltrim(std::string s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
-        return !std::isspace(ch);
-    }));
-    return s;
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(),
+                                  [](int ch) { return !std::isspace(ch); }));
+  return s;
 }
 
 static std::string rtrim(std::string s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
-        return !std::isspace(ch);
-    }).base(), s.end());
-    return s;
+  s.erase(std::find_if(s.rbegin(), s.rend(),
+                       [](int ch) { return !std::isspace(ch); })
+              .base(),
+          s.end());
+  return s;
 }
 
-static std::string trim(std::string s) {
-    return ltrim(rtrim(s));
-}
+static std::string trim(std::string s) { return ltrim(rtrim(s)); }
 
 mappings_t parse(const char *path) {
-    const YAML::Node &config = YAML::LoadFile(path);
-    if (!config.IsMap()) {
-        throw std::range_error("the root must be a map");
-    }
-    const YAML::Node &profiles = config["balance_profiles"];
-    if (!profiles.IsSequence()) {
-        throw std::range_error("balance_profiles must be a list");
-    }
+  const YAML::Node &config = YAML::LoadFile(path);
+  if (!config.IsMap()) {
+    throw std::range_error("the root must be a map");
+  }
+  const YAML::Node &profiles = config["balance_profiles"];
+  if (!profiles.IsSequence()) {
+    throw std::range_error("balance_profiles must be a list");
+  }
 
-    mappings_t ret;
+  mappings_t ret;
 
-    for (size_t i = 0; i < profiles.size(); ++i) {
-        const YAML::Node &profile = profiles[i];
-        if (1 != profile.size() || !profile.IsMap()) {
-            throw std::range_error("profile " + std::to_string(i) + " must be a dict from name to list");
-        }
-
-        const std::string &name = profile.begin()->first.as<std::string>();
-        const YAML::Node &items = profile.begin()->second;
-        for (const YAML::Node &item : items) {
-            const std::string &row = item.as<std::string>();
-            const unsigned long sign = row.find('%');
-            if (std::string::npos == sign) {
-                throw std::range_error(name + " -> '" + row + "' is invalid; it must contain a %");
-            };
-            ret[name].push_back((ChannelMapping) {
-                    .percentage = std::stoi(row.substr(0, sign)) / 100.f,
-                    .name = trim(row.substr(sign + 1))
-            });
-        }
+  for (size_t i = 0; i < profiles.size(); ++i) {
+    const YAML::Node &profile = profiles[i];
+    if (1 != profile.size() || !profile.IsMap()) {
+      throw std::range_error("profile " + std::to_string(i) +
+                             " must be a dict from name to list");
     }
 
-    return ret;
+    const std::string &name = profile.begin()->first.as<std::string>();
+    const YAML::Node &items = profile.begin()->second;
+    for (const YAML::Node &item : items) {
+      const std::string &row = item.as<std::string>();
+      const unsigned long sign = row.find('%');
+      if (std::string::npos == sign) {
+        throw std::range_error(name + " -> '" + row +
+                               "' is invalid; it must contain a %");
+      };
+      ret[name].push_back(
+          (ChannelMapping){.percentage = std::stoi(row.substr(0, sign)) / 100.f,
+                           .name = trim(row.substr(sign + 1))});
+    }
+  }
+
+  return ret;
 }
